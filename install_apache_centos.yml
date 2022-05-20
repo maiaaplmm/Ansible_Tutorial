@@ -4,36 +4,76 @@
   become: true
   tasks:
 
-  - name: update repository index
+  - name: installa updates (CentOS)
+    tags: always
+    dnf:
+      update_only: yes
+      update_cache: yes
+    when: ansible_distribution == "CentOS"
+
+  - name: installa updates (Ubuntu)
+    tags: always
     apt:
+      upgrade: dist
       update_cache: yes
     when: ansible_distribution == "Ubuntu"
 
-  - name: installa apache2 package
+- hosts: web_servers
+  become: true
+  tasks:
+
+  - name: installa apache e php package per Ubuntu
+    tags: apache,apapche2,ubuntu
     apt:
-      name: apache2
+      name:
+        - apache2
+        - libapache2-mod-php
       state: latest
     when: ansible_distribution == "Ubuntu"
 
-  - name: aggiungi supporto php per apache
+  - name: installa apache2 e php  package per CentOS
+    tags: apache,centos,httpd
+    dnf:
+      name:
+        - httpd
+        - php
+      state: latest
+    when: ansible_distribution_version == "CentOS"
+
+  - name: copia default html fie per il sito
+    tags: apache,apache2,httpd
+    copy:
+      src: default_site.html
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644
+
+- hosts: db_servers
+  become: true
+  tasks:
+
+  - name: installa mariadb package (CentOS)
+    tags: centos,db,mariadb
+    dnf:
+      name: mariadb
+      state: latest
+    when: ansible_distribution == "CentOS"
+
+  - name: install mariadb package (Ubuntu)
+    tags: db,mariadb,ubuntu
     apt:
-      name: libapache2-mod-php
+      name: mariadb-server
       state: latest
     when: ansible_distribution == "Ubuntu"
 
-- name: update repository index
-    dnf:
-      update_cache: yes
-    when: ansible_distribution_version == "CentOS"
+- hosts: file_servers
+  become: true
+  tasks:
 
-  - name: installa apache2 package
-    dnf:
-      name: http
+  - name: installa samba package
+    tags: samba
+    package:
+      name: samba
       state: latest
-    when: ansible_distribution_version == "CentOS"
 
-  - name: aggiungi supporto php per apache
-    dnf:
-      name: php
-      state: latest
-    when: ansible_distribution_version == "CentOS"
