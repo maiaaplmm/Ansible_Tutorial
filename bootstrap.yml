@@ -1,0 +1,46 @@
+---
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: installa updates (CentOS)
+    tags: always
+    dnf:
+      update_only: yes
+      update_cache: yes
+    when: ansible_distribution_version == "CentOS"
+
+  - name: installa updates (Ubuntu)
+    tags: always
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: creo utente di nome Anna
+    tags: always
+    user:
+      name: anna
+      groups: root
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: aggiungere chiave ssh per Anna
+    tags: always
+    authorized_key:
+      user: anna
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINweZRpY4nFmphmesSIeoOLo07+4IMIhVWXHwf6wEg57 ansible"
+
+  - name: aggiungo sudoers file for Anna
+    tags: always
+    copy:
+      src: sudoer_anna
+      dest: /etc/sudoers.d/anna
+      owner: root
+      group: root
+      mode: 0440
+
+

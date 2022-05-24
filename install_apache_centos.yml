@@ -4,19 +4,48 @@
   become: true
   tasks:
 
-  - name: installa updates (CentOS)
+  - name: update repo cache (CentOS)
     tags: always
     dnf:
       update_only: yes
       update_cache: yes
-    when: ansible_distribution == "CentOS"
+    changed_when: false
+    when: ansible_distribution_version == "CentOS"
 
-  - name: installa updates (Ubuntu)
+  - name: update repo cache (Ubuntu)
     tags: always
     apt:
       upgrade: dist
       update_cache: yes
+    changed_when: false
     when: ansible_distribution == "Ubuntu"
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: aggiungere chiave ssh per Anna
+    tags: always
+    authorized_key:
+      user: anna
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINweZRpY4nFmphmesSIeoOLo07+4IMIhVWXHwf6wEg57 ansible"
+
+- hosts: workstations
+  become: true
+  tasks:
+
+  - name: installa unzip
+    package:
+      name: unzip
+
+  - name: install terraform
+    unarchive:
+      src: https://releases.hashicorp.com/terraform/1.2.0/terraform_1.2.0_linux_amd64.zip
+      dest: /usr/local/bin
+      remote_src: yes
+      mode: 0755
+      owner: root
+      group: root
 
 - hosts: web_servers
   become: true
@@ -40,6 +69,30 @@
       state: latest
     when: ansible_distribution_version == "CentOS"
 
+  - name: Avvia il servizio httpd per CentOS
+    tags: apache,centos,httpd
+    service:
+      name: httpd
+      state: started
+      enabled: yes
+    when: ansible_distribution_version == "CentOS"
+
+  - name: sostituire indirizzo mail per l'admin
+    tags: apache,centos,httpd
+    lineinfile:
+      path: /etc/httpd/conf/httpd.conf
+      regexp: '^ServerAdmin'
+      line: ServerAdmin somebody@somewhere.net
+    when: ansible_distribution_version == "CentOS"
+    register: httpd
+
+  - name: restart httpd (CentOS)
+    tags: apache,centos,httpd
+    service:
+      name: httpd
+      state: restarted
+    when: httpd.changed
+
   - name: copia default html fie per il sito
     tags: apache,apache2,httpd
     copy:
@@ -58,7 +111,7 @@
     dnf:
       name: mariadb
       state: latest
-    when: ansible_distribution == "CentOS"
+    when: ansible_distribution_version == "CentOS"
 
   - name: install mariadb package (Ubuntu)
     tags: db,mariadb,ubuntu
